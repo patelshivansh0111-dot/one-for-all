@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/components/chat/**",
+    "src/components/feed/**",
+    "src/components/events/**",
+    "src/components/marketplace/**",
+    "src/components/landing/Hero.tsx",
+    "src/components/landing/Features.tsx",
+    "src/components/landing/CTA.tsx",
+    "src/components/layout/Sidebar.tsx",
+    "src/components/layout/Topbar.tsx",
+    "src/components/layout/UserMenu.tsx",
+    "src/components/layout/MobileNav.tsx",
+    "src/components/shared/GlassPanel.tsx"
+  ]
+}

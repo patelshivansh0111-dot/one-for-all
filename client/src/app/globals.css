@@ -1,0 +1,202 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f0e8;
+  --foreground: #111111;
+  --card: #fffdf8;
+  --card-foreground: #111111;
+  --popover: #fffdf8;
+  --popover-foreground: #111111;
+  --primary: #111111;
+  --primary-foreground: #f5f0e8;
+  --secondary: #ffd34e;
+  --secondary-foreground: #111111;
+  --accent-blue: #4267ff;
+  --accent-pink: #e83e8c;
+  --accent-mint: #63d1b5;
+  --accent-yellow: #ffd34e;
+  --muted: #ebe4d8;
+  --muted-foreground: #5c564c;
+  --border: #111111;
+  --input: #111111;
+  --ring: #4267ff;
+  --destructive: #e83e8c;
+  --radius: 9999px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-ofa-yellow: #ffd34e;
+  --color-ofa-blue: #4267ff;
+  --color-ofa-pink: #e83e8c;
+  --color-ofa-mint: #63d1b5;
+  --color-ofa-ink: #111111;
+  --color-ofa-paper: #f5f0e8;
+  --color-ofa-cream: #fffdf8;
+  --font-sans: var(--font-manrope);
+  --font-serif: var(--font-instrument);
+  --font-mono: var(--font-plex);
+}
+
+* {
+  border-color: color-mix(in srgb, var(--border) 18%, transparent);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+.font-serif {
+  font-family: var(--font-instrument), Georgia, serif;
+}
+
+.font-mono {
+  font-family: var(--font-plex), ui-monospace, monospace;
+}
+
+.font-display {
+  font-family: var(--font-instrument), Georgia, serif;
+}
+
+.marker-yellow {
+  background-image: linear-gradient(transparent 62%, #ffd34e 62%);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Stickers: variants set BOTH background and text so contrast never fails */
+.sticker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #111111;
+  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  font-family: var(--font-plex), ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  box-shadow: 2px 2px 0 #111111;
+  background-color: #ffffff;
+  color: #111111;
+  white-space: nowrap;
+}
+
+.sticker-yellow {
+  background-color: #ffd34e !important;
+  color: #111111 !important;
+}
+
+.sticker-blue {
+  background-color: #4267ff !important;
+  color: #ffffff !important;
+}
+
+.sticker-pink {
+  background-color: #e83e8c !important;
+  color: #ffffff !important;
+}
+
+.sticker-mint {
+  background-color: #63d1b5 !important;
+  color: #111111 !important;
+}
+
+.sticker-ink {
+  background-color: #111111 !important;
+  color: #f5f0e8 !important;
+}
+
+.sticker-white {
+  background-color: #ffffff !important;
+  color: #111111 !important;
+}
+
+.editorial-card {
+  background-color: #fffdf8;
+  color: #111111;
+  border: 1.5px solid #111111;
+  border-radius: 1.25rem;
+  box-shadow: 3px 3px 0 #111111;
+}
+
+.editorial-card-ink {
+  background-color: #111111 !important;
+  color: #f5f0e8 !important;
+  border: 1.5px solid #111111;
+  border-radius: 1.25rem;
+  box-shadow: 3px 3px 0 #111111;
+}
+
+.editorial-card-ink .sticker {
+  /* keep stickers readable on dark cards */
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #111;
+  border-radius: 999px;
+}
+
+::selection {
+  background: #ffd34e;
+  color: #111;
+}
+
+@keyframes announce-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.announce-track {
+  animation: announce-scroll 32s linear infinite;
+}
+
+@keyframes sticker-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -8px;
+  }
+}
+
+.sticker-float {
+  animation: sticker-float 4.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announce-track,
+  .sticker-float {
+    animation: none;
+  }
+}
