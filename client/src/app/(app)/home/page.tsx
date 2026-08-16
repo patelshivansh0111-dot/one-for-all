@@ -6,67 +6,17 @@ import { apiGet } from "@/lib/api";
 import { QuestionCard } from "@/components/questions/QuestionCard";
 import { Button } from "@/components/ui/button";
 import type { Question, User } from "@/types";
-import { DEMO_MATCHES } from "@/lib/constants";
-
-const FALLBACK_QUESTIONS: Question[] = [
-  {
-    _id: "demo-1",
-    content:
-      "I know basic programming and want to start freelancing, but I have no idea how to get my first client. Where should I start?",
-    category: "FREELANCING",
-    tags: ["FREELANCING", "WEB DEVELOPMENT", "CAREER"],
-    isAnonymous: false,
-    answersCount: 12,
-    helpfulCount: 47,
-    author: {
-      _id: "1",
-      name: "Shiv",
-      username: "shiv",
-      headline: "College Student",
-    },
-  },
-  {
-    _id: "demo-2",
-    content:
-      "I want to start a clothing business in Gujarat but don't know anything about manufacturing or suppliers.",
-    category: "BUSINESS",
-    tags: ["APPAREL", "MANUFACTURING", "GUJARAT"],
-    isAnonymous: false,
-    answersCount: 8,
-    helpfulCount: 29,
-    author: {
-      _id: "2",
-      name: "Ananya",
-      username: "ananya",
-      headline: "Aspiring founder",
-    },
-  },
-  {
-    _id: "demo-3",
-    content: "Should I choose CSE or pursue design if I care more about product than pure coding?",
-    category: "CAREER",
-    tags: ["COLLEGE", "DESIGN", "CAREER"],
-    isAnonymous: true,
-    answersCount: 21,
-    helpfulCount: 63,
-    author: null,
-  },
-];
 
 export default function HomePage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["questions-feed"],
     queryFn: async () => {
-      try {
-        const res = await apiGet<{ questions: Question[] }>("/questions");
-        return res.questions?.length ? res.questions : FALLBACK_QUESTIONS;
-      } catch {
-        return FALLBACK_QUESTIONS;
-      }
+      const res = await apiGet<{ questions: Question[] }>("/questions");
+      return res.questions ?? [];
     },
   });
 
-  const questions = data || FALLBACK_QUESTIONS;
+  const questions = data ?? [];
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -81,6 +31,21 @@ export default function HomePage() {
 
         {isLoading ? (
           <div className="editorial-card p-8 font-mono text-xs tracking-[0.14em]">LOADING QUESTIONS…</div>
+        ) : isError ? (
+          <div className="editorial-card p-8">
+            <p className="font-serif text-xl">Couldn&apos;t load questions</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              The API may be waking up. Wait a moment and refresh.
+            </p>
+          </div>
+        ) : questions.length === 0 ? (
+          <div className="editorial-card p-8">
+            <p className="font-serif text-xl">No questions yet</p>
+            <p className="mt-2 text-sm text-muted-foreground">Be the first to ask the community.</p>
+            <Button asChild variant="secondary" className="mt-5">
+              <Link href="/ask">Ask a question →</Link>
+            </Button>
+          </div>
         ) : (
           questions.map((q) => (
             <QuestionCard
@@ -103,15 +68,9 @@ export default function HomePage() {
       <aside className="hidden space-y-4 lg:block">
         <div className="editorial-card p-4">
           <h3 className="font-mono text-[11px] tracking-[0.14em]">PEOPLE WHO MAY HELP</h3>
-          <div className="mt-4 space-y-4">
-            {DEMO_MATCHES.slice(0, 3).map((p) => (
-              <div key={p.name} className="border-t-[1.5px] border-[#111]/10 pt-3 first:border-0 first:pt-0">
-                <div className="font-serif text-lg">{p.name}</div>
-                <p className="text-xs text-muted-foreground">{p.role}</p>
-                <p className="mt-1 font-mono text-[10px] tracking-wider">HELPED {p.helped}</p>
-              </div>
-            ))}
-          </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Browse people with real experience across topics.
+          </p>
           <Button asChild variant="outline" size="sm" className="mt-4 w-full">
             <Link href="/people">See people →</Link>
           </Button>
@@ -121,9 +80,9 @@ export default function HomePage() {
           <h3 className="font-mono text-[11px] tracking-[0.14em]">TRENDING TOPICS</h3>
           <div className="mt-3 flex flex-wrap gap-2">
             {["STARTUPS", "FREELANCING", "CAREER", "MONEY", "SPORTS"].map((t) => (
-              <span key={t} className="sticker sticker-white">
-                {t}
-              </span>
+              <Link key={t} href={`/search?q=${encodeURIComponent(t.toLowerCase())}`}>
+                <span className="sticker sticker-white">{t}</span>
+              </Link>
             ))}
           </div>
         </div>

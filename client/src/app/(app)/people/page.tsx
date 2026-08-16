@@ -6,36 +6,19 @@ import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { DEMO_PEOPLE } from "@/lib/constants";
 import type { User } from "@/types";
 
 export default function PeoplePage() {
   const [query, setQuery] = useState("");
 
-  const { data: people = DEMO_PEOPLE, isLoading } = useQuery({
+  const { data: people = [], isLoading, isError } = useQuery({
     queryKey: ["people", query],
     queryFn: async () => {
-      try {
-        if (query.trim()) {
-          const res = await apiGet<{ users: User[] }>("/search", { q: query, type: "users" });
-          if (res.users?.length) return res.users;
-        }
-        const users = await apiGet<User[] | { users: User[] }>("/users");
-        const list = Array.isArray(users) ? users : users.users ?? [];
-        return list.length ? list : DEMO_PEOPLE;
-      } catch {
-        if (query.trim()) {
-          const q = query.toLowerCase();
-          return DEMO_PEOPLE.filter(
-            (p) =>
-              p.name.toLowerCase().includes(q) ||
-              p.headline?.toLowerCase().includes(q) ||
-              p.location?.toLowerCase().includes(q) ||
-              p.experienceTags?.some((t) => t.toLowerCase().includes(q))
-          );
-        }
-        return DEMO_PEOPLE;
-      }
+      const users = await apiGet<User[] | { users: User[] }>("/users", {
+        ...(query.trim() ? { q: query.trim() } : {}),
+        limit: 48,
+      });
+      return Array.isArray(users) ? users : users.users ?? [];
     },
   });
 
@@ -63,10 +46,17 @@ export default function PeoplePage() {
 
       {isLoading ? (
         <div className="editorial-card p-8 font-mono text-xs tracking-[0.14em]">LOADING PEOPLE…</div>
+      ) : isError ? (
+        <div className="editorial-card p-10 text-center">
+          <p className="font-serif text-2xl">Couldn&apos;t load people</p>
+          <p className="mt-2 text-muted-foreground">The API may be waking up. Refresh in a moment.</p>
+        </div>
       ) : people.length === 0 ? (
         <div className="editorial-card p-10 text-center">
           <p className="font-serif text-2xl">No people found</p>
-          <p className="mt-2 text-muted-foreground">Try a different search term.</p>
+          <p className="mt-2 text-muted-foreground">
+            {query.trim() ? "Try a different search term." : "Invite friends to join — real members show up here."}
+          </p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -81,7 +71,7 @@ export default function PeoplePage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="font-serif text-xl">{person.name}</h2>
-                    <p className="text-sm text-muted-foreground">{person.headline || (person as User).profession}</p>
+                    <p className="text-sm text-muted-foreground">{person.headline || person.profession}</p>
                     {person.location && (
                       <p className="mt-1 font-mono text-[10px] tracking-wider text-muted-foreground">
                         {person.location.toUpperCase()}

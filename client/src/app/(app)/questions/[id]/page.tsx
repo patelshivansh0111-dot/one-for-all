@@ -11,89 +11,39 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
 import type { Answer, Question, User } from "@/types";
 
-const DEMO_QUESTION: Question = {
-  _id: "demo-q",
-  content:
-    "I know basic programming and want to start freelancing, but I have no idea how to get my first client. Where should I start?",
-  category: "FREELANCING",
-  tags: ["FREELANCING", "WEB DEVELOPMENT", "CAREER"],
-  isAnonymous: false,
-  answersCount: 2,
-  helpfulCount: 47,
-  author: { _id: "1", name: "Shiv", username: "shiv", headline: "College Student" },
-  createdAt: "2026-08-14T10:00:00.000Z",
-};
-
-const DEMO_ANSWERS: Answer[] = [
-  {
-    _id: "a1",
-    content:
-      "Start with people you already know — classmates, local businesses, family friends. Offer to do one small project for free or very cheap to build a testimonial. Post your work on LinkedIn and Twitter/X, not just portfolio sites nobody visits.",
-    helpfulCount: 23,
-    isBestAnswer: true,
-    author: {
-      _id: "p1",
-      name: "Neha Kapoor",
-      username: "nehakapoor",
-      headline: "Freelance Designer",
-      peopleHelped: 55,
-    },
-    createdAt: "2026-08-15T09:00:00.000Z",
-  },
-  {
-    _id: "a2",
-    content:
-      "I got my first client by replying to a post in a college WhatsApp group. Someone needed a simple landing page. Don't wait until you're 'ready' — you'll learn more from one real client than months of tutorials.",
-    helpfulCount: 14,
-    author: {
-      _id: "p2",
-      name: "Arjun Patel",
-      username: "arjunpatel",
-      headline: "Freelance Developer",
-      peopleHelped: 28,
-    },
-    createdAt: "2026-08-15T18:00:00.000Z",
-  },
-];
-
 export default function QuestionDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const queryClient = useQueryClient();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const currentUser = useAuthStore((s) => s.user);
   const [answerText, setAnswerText] = useState("");
   const [helpfulIds, setHelpfulIds] = useState<Set<string>>(new Set());
 
   const { data: question, isLoading: questionLoading } = useQuery({
     queryKey: ["question", id],
     queryFn: async () => {
-      try {
-        return await apiGet<Question>(`/questions/${id}`);
-      } catch {
-        return id.startsWith("demo") || id === "demo-1" || id === "demo-2" || id === "demo-3"
-          ? { ...DEMO_QUESTION, _id: id }
-          : null;
-      }
+      const res = await apiGet<{ question: Question } | Question>(`/questions/${id}`);
+      return res && typeof res === "object" && "question" in res ? res.question : (res as Question);
     },
   });
 
   const { data: answers = [], isLoading: answersLoading } = useQuery({
     queryKey: ["answers", id],
     queryFn: async () => {
-      try {
-        const res = await apiGet<{ answers: Answer[] } | Answer[]>("/answers", { questionId: id });
-        const list = Array.isArray(res) ? res : res.answers ?? [];
-        return list.length ? list : DEMO_ANSWERS;
-      } catch {
-        return DEMO_ANSWERS;
-      }
+      const res = await apiGet<{ answers: Answer[] } | Answer[]>("/answers", { questionId: id });
+      return Array.isArray(res) ? res : res.answers ?? [];
     },
     enabled: !!question,
   });
 
+  const isOwnQuestion =
+    Boolean(currentUser?._id) &&
+    Boolean(question?.author?._id) &&
+    String(currentUser?._id) === String(question?.author?._id);
+
   const postAnswer = useMutation({
-    mutationFn: () =>
-      apiPost<Answer>("/answers", { questionId: id, content: answerText }),
+    mutationFn: () => apiPost<{ answer: Answer } | Answer>("/answers", { questionId: id, content: answerText }),
     onSuccess: () => {
       setAnswerText("");
       queryClient.invalidateQueries({ queryKey: ["answers", id] });
@@ -110,9 +60,8 @@ export default function QuestionDetailPage() {
       setHelpfulIds((prev) => new Set(prev).add(answerId));
       queryClient.invalidateQueries({ queryKey: ["answers", id] });
       toast.success("Marked as helpful");
-    } catch {
-      setHelpfulIds((prev) => new Set(prev).add(answerId));
-      toast.message("Thanks — marked as helpful");
+    } catch (e) {
+      toast.error(getApiErrorMessage(e, "Could not mark as helpful"));
     }
   };
 
@@ -181,6 +130,10 @@ export default function QuestionDetailPage() {
 
         {answersLoading ? (
           <div className="editorial-card p-6 font-mono text-xs">LOADING ANSWERS…</div>
+        ) : answers.length === 0 ? (
+          <div className="editorial-card p-6 text-sm text-muted-foreground">
+            No answers yet. Be the first to share experience — if this isn&apos;t your question.
+          </div>
         ) : (
           answers.map((answer) => (
             <div key={answer._id} className="editorial-card p-5">
@@ -230,35 +183,43 @@ export default function QuestionDetailPage() {
 
       <section className="editorial-card p-5 sm:p-8">
         <h2 className="font-serif text-2xl">Share your experience</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          You don&apos;t need the perfect answer — share what worked (or didn&apos;t) for you.
-        </p>
-        {isAuthenticated ? (
-          <>
-            <textarea
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-              rows={5}
-              placeholder="Write your answer…"
-              className="mt-4 w-full resize-none rounded-2xl border-[1.5px] border-[#111] bg-[#F5F0E8] p-4 font-serif text-lg outline-none focus:ring-2 focus:ring-accent-blue/30"
-            />
-            <div className="mt-4 flex justify-end">
-              <Button
-                variant="secondary"
-                disabled={!answerText.trim() || postAnswer.isPending}
-                onClick={() => postAnswer.mutate()}
-              >
-                {postAnswer.isPending ? "Posting…" : "Post answer →"}
-              </Button>
-            </div>
-          </>
+        {isOwnQuestion ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            This is your question — wait for others to answer. You can&apos;t answer your own question.
+          </p>
         ) : (
-          <div className="mt-4 text-center">
-            <p className="text-muted-foreground">Sign in to share your experience.</p>
-            <Button asChild variant="secondary" className="mt-4">
-              <Link href="/login">Sign in →</Link>
-            </Button>
-          </div>
+          <>
+            <p className="mt-2 text-sm text-muted-foreground">
+              You don&apos;t need the perfect answer — share what worked (or didn&apos;t) for you.
+            </p>
+            {isAuthenticated ? (
+              <>
+                <textarea
+                  value={answerText}
+                  onChange={(e) => setAnswerText(e.target.value)}
+                  rows={5}
+                  placeholder="Write your answer…"
+                  className="mt-4 w-full resize-none rounded-2xl border-[1.5px] border-[#111] bg-[#F5F0E8] p-4 font-serif text-lg outline-none focus:ring-2 focus:ring-accent-blue/30"
+                />
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    variant="secondary"
+                    disabled={!answerText.trim() || postAnswer.isPending}
+                    onClick={() => postAnswer.mutate()}
+                  >
+                    {postAnswer.isPending ? "Posting…" : "Post answer →"}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="mt-4 text-center">
+                <p className="text-muted-foreground">Sign in to share your experience.</p>
+                <Button asChild variant="secondary" className="mt-4">
+                  <Link href="/login">Sign in →</Link>
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

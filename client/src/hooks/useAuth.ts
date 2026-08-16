@@ -5,12 +5,17 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
 import api from "@/lib/api";
+import { API_URL } from "@/lib/constants";
 import { useAuthStore } from "@/store/authStore";
 import { getApiErrorMessage } from "@/lib/utils";
 import type { LoginCredentials, RegisterData, User } from "@/types";
 
 const DEMO_USER_KEY = "ofa_demo_user";
 const DEMO_USERS_KEY = "ofa_demo_users";
+
+function isLocalApi() {
+  return /localhost|127\.0\.0\.1/.test(API_URL);
+}
 
 function isNetworkFailure(error: unknown) {
   if (!isAxiosError(error)) return false;
@@ -42,11 +47,18 @@ export function useAuth() {
   const fetchUser = useCallback(async () => {
     try {
       useAuthStore.getState().setLoading(true);
+      if (typeof window !== "undefined" && !isLocalApi()) {
+        const token = localStorage.getItem("token");
+        if (token?.startsWith("demo_")) {
+          localStorage.removeItem("token");
+          localStorage.removeItem(DEMO_USER_KEY);
+        }
+      }
       const { data } = await api.get<{ success: boolean; data: User }>("/auth/me");
       setUser(data.data);
       return data.data;
     } catch {
-      if (typeof window !== "undefined") {
+      if (typeof window !== "undefined" && isLocalApi()) {
         const cached = localStorage.getItem(DEMO_USER_KEY);
         const token = localStorage.getItem("token");
         if (cached && token?.startsWith("demo_")) {
@@ -76,7 +88,7 @@ export function useAuth() {
       toast.success("Welcome back!");
       return data.data.user;
     } catch (error) {
-      if (isNetworkFailure(error)) {
+      if (isNetworkFailure(error) && isLocalApi()) {
         const users = readDemoUsers();
         const found = users.find(
           (u) => u.email?.toLowerCase() === credentials.email.toLowerCase() && u.password === credentials.password
@@ -90,7 +102,11 @@ export function useAuth() {
           });
           return user;
         }
-        toast.error("Can't reach the API (localhost:5000). Start MongoDB + server, or register once in demo mode.");
+        toast.error("Can't reach the API. Start MongoDB + server, or register once in demo mode.");
+        return null;
+      }
+      if (isNetworkFailure(error)) {
+        toast.error("Can't reach the API. Wait a moment (server may be waking up) and try again.");
         return null;
       }
       toast.error(getApiErrorMessage(error, "Login failed"));
@@ -119,7 +135,7 @@ export function useAuth() {
       router.push("/home");
       return data.data.user;
     } catch (error) {
-      if (isNetworkFailure(error)) {
+      if (isNetworkFailure(error) && isLocalApi()) {
         const users = readDemoUsers();
         if (users.some((u) => u.email?.toLowerCase() === payload.email.toLowerCase())) {
           toast.error("That email is already registered in local demo mode.");
@@ -154,6 +170,10 @@ export function useAuth() {
         });
         router.push("/home");
         return safeUser;
+      }
+      if (isNetworkFailure(error)) {
+        toast.error("Can't reach the API. Wait a moment (server may be waking up) and try again.");
+        return null;
       }
       toast.error(getApiErrorMessage(error, "Registration failed"));
       return null;

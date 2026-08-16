@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { CATEGORIES, EXAMPLE_QUESTIONS } from "@/lib/constants";
+import { getApiErrorMessage } from "@/lib/utils";
 import type { MatchedPerson, Question } from "@/types";
 
 function AskPageContent() {
@@ -19,6 +20,7 @@ function AskPageContent() {
   const [tags, setTags] = useState("");
   const [matches, setMatches] = useState<MatchedPerson[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
+  const [createdQuestion, setCreatedQuestion] = useState<Question | null>(null);
   const [step, setStep] = useState<"compose" | "matching" | "results">("compose");
 
   const categoryOptions = useMemo(
@@ -29,20 +31,24 @@ function AskPageContent() {
   const submit = useMutation({
     mutationFn: async () => {
       setStep("matching");
-      let created: Question | null = null;
-      try {
-        created = await apiPost<Question>("/questions", {
-          content,
-          category: category.toLowerCase().replace(/\s+/g, "-"),
-          tags: tags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean),
-          isAnonymous,
-        });
-      } catch {
-        // Allow matching demo even if API/Mongo is down
-      }
+      setMatches([]);
+      setTopics([]);
+      setCreatedQuestion(null);
+
+      const createdRes = await apiPost<{ question: Question } | Question>("/questions", {
+        content,
+        category: category.toLowerCase().replace(/\s+/g, "-"),
+        tags: tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        isAnonymous,
+      });
+      const created =
+        createdRes && typeof createdRes === "object" && "question" in createdRes
+          ? createdRes.question
+          : (createdRes as Question);
+      setCreatedQuestion(created);
 
       try {
         const match = await apiPost<{ people: MatchedPerson[]; topics: string[] }>("/ai/match-people", {
@@ -53,19 +59,19 @@ function AskPageContent() {
         setMatches(match.people || []);
         setTopics(match.topics || []);
       } catch {
-        setTopics(["business", "experience", "career"]);
         setMatches([]);
+        setTopics([]);
       }
 
       return created;
     },
-    onSuccess: (created) => {
+    onSuccess: () => {
       setStep("results");
-      toast.success(created ? "Question posted" : "Showing people who may be able to help");
+      toast.success("Question posted");
     },
-    onError: () => {
-      setStep("results");
-      toast.message("Could not reach the server — showing the matching experience anyway");
+    onError: (error) => {
+      setStep("compose");
+      toast.error(getApiErrorMessage(error, "Could not post your question. Sign in and try again."));
     },
   });
 
@@ -191,60 +197,54 @@ function AskPageContent() {
             </div>
 
             <div className="grid gap-4">
-              {(matches.length
-                ? matches
-                : [
-                    {
-                      _id: "1",
-                      name: "Rahul Shah",
-                      username: "rahul",
-                      headline: "Clothing Business Owner",
-                      location: "Ahmedabad",
-                      peopleHelped: 42,
-                      experienceTags: ["ENTREPRENEURSHIP", "APPAREL", "MANUFACTURING"],
-                      matchReason: "Experience in apparel manufacturing · Gujarat",
-                    },
-                    {
-                      _id: "2",
-                      name: "Priya Mehta",
-                      username: "priya",
-                      headline: "Apparel Manufacturer",
-                      location: "Gujarat",
-                      peopleHelped: 68,
-                      experienceTags: ["MANUFACTURING", "SUPPLY CHAIN"],
-                      matchReason: "Runs manufacturing operations · Helped 68 people",
-                    },
-                  ]
-              ).map((person) => (
-                <div key={person._id} className="editorial-card p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-serif text-2xl">{person.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {person.headline || person.profession} · {person.location || "India"}
-                      </p>
-                      <p className="mt-2 font-mono text-[11px] tracking-wider">
-                        HELPED {person.peopleHelped ?? 0} PEOPLE
-                      </p>
-                      <p className="mt-2 text-sm text-muted-foreground">{person.matchReason}</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {(person.experienceTags || []).slice(0, 4).map((tag) => (
-                          <span key={tag} className="sticker sticker-white">
-                            {tag}
-                          </span>
-                        ))}
+              {matches.length ? (
+                matches.map((person) => (
+                  <div key={person._id} className="editorial-card p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-serif text-2xl">{person.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {person.headline || person.profession} · {person.location || "India"}
+                        </p>
+                        <p className="mt-2 font-mono text-[11px] tracking-wider">
+                          HELPED {person.peopleHelped ?? 0} PEOPLE
+                        </p>
+                        <p className="mt-2 text-sm text-muted-foreground">{person.matchReason}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {(person.experienceTags || []).slice(0, 4).map((tag) => (
+                            <span key={tag} className="sticker sticker-white">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
+                      <Button variant="soft" onClick={() => router.push(`/u/${person.username}`)}>
+                        Ask {person.name.split(" ")[0]} →
+                      </Button>
                     </div>
-                    <Button variant="soft" onClick={() => router.push(`/u/${person.username}`)}>
-                      Ask {person.name.split(" ")[0]} →
-                    </Button>
                   </div>
+                ))
+              ) : (
+                <div className="editorial-card p-6">
+                  <p className="font-serif text-xl">No matches yet</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Your question is posted. As more people join with relevant experience, they&apos;ll show up
+                    here.
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Button variant="secondary" onClick={() => router.push("/home")}>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  router.push(createdQuestion?._id ? `/questions/${createdQuestion._id}` : "/home")
+                }
+              >
+                {createdQuestion?._id ? "View question →" : "Go to feed →"}
+              </Button>
+              <Button variant="outline" onClick={() => router.push("/home")}>
                 Go to feed →
               </Button>
               <Button
@@ -252,6 +252,7 @@ function AskPageContent() {
                 onClick={() => {
                   setStep("compose");
                   setMatches([]);
+                  setCreatedQuestion(null);
                 }}
               >
                 Ask another

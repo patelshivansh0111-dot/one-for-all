@@ -27,6 +27,41 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   sendSuccess(res, { user });
 };
 
+export const listPeople = async (req: Request, res: Response): Promise<void> => {
+  const { skip, limit, page } = paginateQuery(req.query.page as string, req.query.limit as string);
+  const q = (req.query.q as string)?.trim();
+
+  const filter: Record<string, unknown> = {
+    isBanned: false,
+    'privacy.profileVisibility': { $ne: 'private' },
+  };
+
+  if (q) {
+    filter.$or = [
+      { name: { $regex: q, $options: 'i' } },
+      { username: { $regex: q, $options: 'i' } },
+      { headline: { $regex: q, $options: 'i' } },
+      { location: { $regex: q, $options: 'i' } },
+      { profession: { $regex: q, $options: 'i' } },
+      { experienceTags: { $regex: q, $options: 'i' } },
+      { skills: { $regex: q, $options: 'i' } },
+    ];
+  }
+
+  const [users, total] = await Promise.all([
+    User.find(filter)
+      .select(
+        'name username avatar headline profession location experienceTags peopleHelped questionsAnswered communityRating badges verifiedExperience'
+      )
+      .sort({ peopleHelped: -1, questionsAnswered: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    User.countDocuments(filter),
+  ]);
+
+  sendSuccess(res, { users, pagination: { page, limit, total } });
+};
+
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   const authReq = req as AuthRequest;
   const allowed = [

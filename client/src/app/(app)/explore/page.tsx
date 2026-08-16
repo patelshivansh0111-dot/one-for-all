@@ -6,55 +6,8 @@ import { apiGet, apiPost } from "@/lib/api";
 import { QuestionCard } from "@/components/questions/QuestionCard";
 import { CommunityCard } from "@/components/community/CommunityCard";
 import { Button } from "@/components/ui/button";
-import {
-  DEMO_COMMUNITIES,
-  DEMO_MATCHES,
-  DEMO_PEOPLE,
-  POPULAR_TOPICS,
-} from "@/lib/constants";
+import { POPULAR_TOPICS } from "@/lib/constants";
 import type { Community, LeaderboardEntry, MatchedPerson, Question, User } from "@/types";
-
-const FALLBACK_QUESTIONS: Question[] = [
-  {
-    _id: "t1",
-    content: "How do I get my first freelance client with no portfolio?",
-    category: "FREELANCING",
-    tags: ["FREELANCING", "CLIENTS"],
-    isAnonymous: false,
-    answersCount: 14,
-    helpfulCount: 52,
-    author: { _id: "1", name: "Arjun", username: "arjun", headline: "Student" },
-  },
-  {
-    _id: "t2",
-    content: "What's the realistic path to starting a clothing brand in Gujarat?",
-    category: "BUSINESS",
-    tags: ["APPAREL", "GUJARAT", "STARTUPS"],
-    isAnonymous: false,
-    answersCount: 9,
-    helpfulCount: 38,
-    author: { _id: "2", name: "Kavya", username: "kavya", headline: "Aspiring founder" },
-  },
-  {
-    _id: "t3",
-    content: "Should I take a safe job or join an early-stage startup?",
-    category: "CAREER",
-    tags: ["CAREER", "STARTUPS"],
-    isAnonymous: true,
-    answersCount: 22,
-    helpfulCount: 71,
-    author: null,
-  },
-];
-
-const FALLBACK_LEADERBOARD: LeaderboardEntry[] = DEMO_PEOPLE.slice(0, 5).map((p, i) => ({
-  _id: p._id,
-  name: p.name,
-  username: p.username,
-  peopleHelped: p.peopleHelped,
-  questionsAnswered: 12 + i * 3,
-  badges: i === 0 ? ["EARLY HELPER"] : [],
-}));
 
 export default function ExplorePage() {
   const { data, isLoading } = useQuery({
@@ -70,43 +23,27 @@ export default function ExplorePage() {
       ]);
 
       const trending =
-        trendingRes.status === "fulfilled" && trendingRes.value.questions?.length
-          ? trendingRes.value.questions
-          : FALLBACK_QUESTIONS;
+        trendingRes.status === "fulfilled" ? trendingRes.value.questions ?? [] : [];
 
-      let communities: Community[] = DEMO_COMMUNITIES;
+      let communities: Community[] = [];
       if (communitiesRes.status === "fulfilled") {
         const raw = communitiesRes.value;
-        const list = Array.isArray(raw) ? raw : raw.items ?? [];
-        if (list.length) communities = list;
+        communities = Array.isArray(raw) ? raw : raw.items ?? [];
       }
 
-      let leaderboard: LeaderboardEntry[] = FALLBACK_LEADERBOARD;
-      if (leaderboardRes.status === "fulfilled" && leaderboardRes.value.leaderboard?.length) {
-        leaderboard = leaderboardRes.value.leaderboard;
-      }
+      const leaderboard =
+        leaderboardRes.status === "fulfilled" ? leaderboardRes.value.leaderboard ?? [] : [];
 
-      let people: MatchedPerson[] = DEMO_MATCHES.map((m, i) => ({
-        _id: `m${i}`,
-        name: m.name,
-        username: m.name.toLowerCase().replace(/\s+/g, ""),
-        headline: m.role,
-        location: m.location,
-        peopleHelped: m.helped,
-        experienceTags: m.tags,
-        matchReason: m.reason,
-      }));
-      if (matchRes.status === "fulfilled" && matchRes.value.people?.length) {
-        people = matchRes.value.people;
-      }
+      const people =
+        matchRes.status === "fulfilled" ? matchRes.value.people ?? [] : [];
 
       return { trending, communities, leaderboard, people };
     },
   });
 
-  const trending = data?.trending ?? FALLBACK_QUESTIONS;
-  const communities = data?.communities ?? DEMO_COMMUNITIES;
-  const leaderboard = data?.leaderboard ?? FALLBACK_LEADERBOARD;
+  const trending = data?.trending ?? [];
+  const communities = data?.communities ?? [];
+  const leaderboard = data?.leaderboard ?? [];
   const people = data?.people ?? [];
 
   return (
@@ -130,6 +67,10 @@ export default function ExplorePage() {
         </div>
         {isLoading ? (
           <div className="editorial-card p-8 font-mono text-xs tracking-[0.14em]">LOADING…</div>
+        ) : trending.length === 0 ? (
+          <div className="editorial-card p-6 text-sm text-muted-foreground">
+            No trending questions yet. Ask one from Home.
+          </div>
         ) : (
           <div className="space-y-4">
             {trending.slice(0, 4).map((q) => (
@@ -153,6 +94,11 @@ export default function ExplorePage() {
 
       <section className="space-y-4">
         <h2 className="font-mono text-[11px] tracking-[0.14em]">PEOPLE YOU MAY WANT TO ASK</h2>
+        {people.length === 0 ? (
+          <div className="editorial-card p-6 text-sm text-muted-foreground">
+            No people to recommend yet — invite friends to join and fill their experience tags.
+          </div>
+        ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {people.slice(0, 6).map((person) => (
             <div key={person._id} className="editorial-card p-5">
@@ -180,6 +126,7 @@ export default function ExplorePage() {
             </div>
           ))}
         </div>
+        )}
       </section>
 
       <section className="space-y-4">
@@ -189,15 +136,24 @@ export default function ExplorePage() {
             <Link href="/communities">Browse all →</Link>
           </Button>
         </div>
+        {communities.length === 0 ? (
+          <div className="editorial-card p-6 text-sm text-muted-foreground">No communities loaded yet.</div>
+        ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {communities.slice(0, 4).map((c) => (
             <CommunityCard key={c._id} community={c} />
           ))}
         </div>
+        )}
       </section>
 
       <section className="space-y-4">
         <h2 className="font-mono text-[11px] tracking-[0.14em]">TOP CONTRIBUTORS</h2>
+        {leaderboard.length === 0 ? (
+          <div className="editorial-card p-6 text-sm text-muted-foreground">
+            No contributors yet — answer a question to show up here.
+          </div>
+        ) : (
         <div className="editorial-card divide-y-[1.5px] divide-[#111]/10">
           {leaderboard.slice(0, 5).map((entry, i) => (
             <Link
@@ -223,6 +179,7 @@ export default function ExplorePage() {
             </Link>
           ))}
         </div>
+        )}
       </section>
 
       <section className="space-y-4">

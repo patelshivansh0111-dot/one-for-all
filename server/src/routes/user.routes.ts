@@ -8,6 +8,7 @@ import * as userController from '../controllers/user.controller';
 
 const router = Router();
 
+router.get('/', asyncHandler(userController.listPeople));
 router.get('/profile/:username', asyncHandler(userController.getProfile));
 
 router.use(protect);

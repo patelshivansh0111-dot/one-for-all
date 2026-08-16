@@ -22,6 +22,10 @@ export const createAnswer = async (req: Request, res: Response): Promise<void> =
   if (!question) throw notFound('Question not found');
   if (question.status === 'closed') throw badRequest('Question is closed');
 
+  if (question.author.toString() === authReq.user!._id.toString()) {
+    throw badRequest('You cannot answer your own question');
+  }
+
   const moderation = moderateContent(content);
   if (moderation.action === 'block') {
     throw badRequest(`Content blocked: ${moderation.reasons.join(', ')}`);
