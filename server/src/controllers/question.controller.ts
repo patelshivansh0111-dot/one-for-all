@@ -20,13 +20,21 @@ import { QUESTION_CATEGORIES } from '../constants/questionCategories';
 const PUBLIC_AUTHOR_FIELDS = 'name username avatar profession headline badges peopleHelped communityRating verifiedExperience';
 
 const sanitizeQuestion = (
-  question: { toObject(): Record<string, unknown>; isAnonymous?: boolean; author?: unknown },
+  question: { toObject?: () => Record<string, unknown> } | Record<string, unknown>,
   viewerId?: string
 ): Record<string, unknown> => {
-  const q = question.toObject() as Record<string, unknown>;
+  const q =
+    typeof (question as { toObject?: () => Record<string, unknown> }).toObject === 'function'
+      ? (question as { toObject: () => Record<string, unknown> }).toObject()
+      : { ...(question as Record<string, unknown>) };
+
   const author = q.author as Record<string, unknown> | undefined;
-  const authorId = author?._id?.toString?.() ?? (q.author as { toString?: () => string })?.toString?.();
-  const isOwner = viewerId && authorId === viewerId;
+  const authorId =
+    author?._id?.toString?.() ??
+    (typeof q.author === 'object' && q.author !== null && 'toString' in (q.author as object)
+      ? (q.author as { toString: () => string }).toString()
+      : undefined);
+  const isOwner = Boolean(viewerId && authorId && authorId === viewerId);
 
   if (q.isAnonymous && !isOwner) {
     q.author = null;
